@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import StatsCard from "@/components/ui/stats-card";
 import Card from "@/components/ui/card";
+import Greeting from "@/components/ui/greeting";
 
 // Placeholder data — real data comes Day 18
 const stats = [
@@ -84,7 +85,7 @@ export default function DashboardPage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">
-          Good morning 👋
+           <Greeting />
         </h1>
         <p className="text-gray-500 text-sm mt-1">
           Here&apos;s what&apos;s happening with your projects today.
