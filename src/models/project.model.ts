@@ -9,6 +9,7 @@ export interface IProject extends Document {
     role: "owner" | "admin" | "member";
     joinedAt: Date;
   }[];
+  color: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -26,6 +27,7 @@ const ProjectSchema = new Schema<IProject>(
       type: String,
       trim: true,
       maxlength: [200, "Description cannot exceed 200 characters"],
+      default: "",
     },
     owner: {
       type: Schema.Types.ObjectId,
@@ -50,11 +52,19 @@ const ProjectSchema = new Schema<IProject>(
         },
       },
     ],
+    color: {
+      type: String,
+      default: "#6366f1", // indigo default
+    },
   },
   {
     timestamps: true,
   }
 );
+
+// Index for faster queries
+ProjectSchema.index({ owner: 1 });
+ProjectSchema.index({ "members.user": 1 });
 
 export default mongoose.models.Project ||
   mongoose.model<IProject>("Project", ProjectSchema);
