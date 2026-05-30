@@ -1,8 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  DndContext,
+  DragEndEvent,
+  DragOverEvent,
+  DragStartEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+  closestCorners,
+} from "@dnd-kit/core";
 import { useKanbanStore, TaskStatus, TaskItem } from "@/store/useKanbanStore";
 import KanbanColumn from "./kanban-column";
+import TaskCard from "./task-card";
 import CreateTaskModal from "./create-task-modal";
 
 interface KanbanBoardProps {
@@ -18,12 +30,24 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
     setLoading,
     setError,
     setActiveProject,
+    moveTask,
   } = useKanbanStore();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [defaultStatus, setDefaultStatus] = useState<TaskStatus>("todo");
-  const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
+  const [activeTask, setActiveTask] = useState<TaskItem | null>(null);
 
+  // Pointer sensor — requires 8px movement before drag starts
+  // prevents accidental drags on click
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
+
+  // Fetch tasks
   useEffect(() => {
     const fetchTasks = async () => {
       setLoading(true);
@@ -35,7 +59,6 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
         const data = await res.json();
 
         if (data.success) {
-          // Cast to TaskItem[] — API returns plain JSON not Mongoose objects
           setTasks(data.data.tasks as TaskItem[]);
         } else {
           setError(data.error);
@@ -50,13 +73,86 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
     if (projectId) fetchTasks();
   }, [projectId]);
 
+  // Drag start — record which task is being dragged
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event;
+    const task = findTaskById(active.id as string);
+    setActiveTask(task);
+  };
+
+  // Drag over — move task between columns in real time
+  const handleDragOver = (event: DragOverEvent) => {
+    const { active, over } = event;
+    if (!over) return;
+
+    const activeId = active.id as string;
+    const overId = over.id as string;
+
+    if (activeId === overId) return;
+
+    const activeColumn = findColumnByTaskId(activeId);
+    const overColumn = findColumnById(overId) ?? findColumnByTaskId(overId);
+
+    if (!activeColumn || !overColumn) return;
+    if (activeColumn.id === overColumn.id) return;
+
+    // Move task to new column instantly in UI
+    moveTask(activeId, overColumn.id as TaskStatus, 0);
+  };
+
+  // Drag end — save to MongoDB
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveTask(null);
+
+    if (!over) return;
+
+    const activeId = active.id as string;
+    const overId = over.id as string;
+
+    const overColumn = findColumnById(overId) ?? findColumnByTaskId(overId);
+    if (!overColumn) return;
+
+    // Save to MongoDB
+    try {
+      await fetch(`/api/tasks/${activeId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: overColumn.id,
+          order: 0,
+        }),
+      });
+    } catch (err) {
+      console.error("Failed to save task status:", err);
+    }
+  };
+
+  // Helper functions
+  const findTaskById = (id: string): TaskItem | null => {
+    for (const col of columns) {
+      const task = col.tasks.find((t) => t._id === id);
+      if (task) return task;
+    }
+    return null;
+  };
+
+  const findColumnByTaskId = (taskId: string) => {
+    return columns.find((col) =>
+      col.tasks.some((t) => t._id === taskId)
+    );
+  };
+
+  const findColumnById = (id: string) => {
+    return columns.find((col) => col.id === id);
+  };
+
   const handleAddTask = (status: TaskStatus) => {
     setDefaultStatus(status);
     setIsModalOpen(true);
   };
 
   const handleTaskClick = (task: TaskItem) => {
-    setSelectedTask(task);
     console.log("Task clicked:", task.title);
   };
 
@@ -90,7 +186,13 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
   }
 
   return (
-    <div>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCorners}
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDragEnd={handleDragEnd}
+    >
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {columns.map((column) => (
           <KanbanColumn
@@ -104,6 +206,15 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
         ))}
       </div>
 
+      {/* Drag overlay — shows the card while dragging */}
+      <DragOverlay>
+        {activeTask ? (
+          <div className="rotate-3 opacity-90">
+            <TaskCard task={activeTask} />
+          </div>
+        ) : null}
+      </DragOverlay>
+
       {isModalOpen && (
         <CreateTaskModal
           projectId={projectId}
@@ -111,6 +222,6 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
           onClose={() => setIsModalOpen(false)}
         />
       )}
-    </div>
+    </DndContext>
   );
 }
