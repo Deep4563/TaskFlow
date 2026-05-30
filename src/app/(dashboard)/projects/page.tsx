@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { projectService } from "@/services/project.service";
 import Card from "@/components/ui/card";
 import { FolderKanban, Plus, Users, Calendar } from "lucide-react";
+import Link from "next/link";
 
 export default async function ProjectsPage() {
   const session = await getServerSession(authOptions);
@@ -38,8 +39,11 @@ export default async function ProjectsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {projects.map((project) => (
+            <Link
+    key={project._id.toString()}
+    href={`/tasks?projectId=${project._id}`}
+  >
             <Card
-              key={project._id.toString()}
               className="p-5 hover:shadow-md transition-shadow cursor-pointer"
             >
               {/* Color bar */}
@@ -73,6 +77,7 @@ export default async function ProjectsPage() {
                 </div>
               </div>
             </Card>
+            </Link>
           ))}
         </div>
       )}
