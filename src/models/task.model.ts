@@ -7,8 +7,10 @@ export interface ITask extends Document {
   priority: "low" | "medium" | "high";
   assignee?: mongoose.Types.ObjectId;
   project: mongoose.Types.ObjectId;
+  createdBy: mongoose.Types.ObjectId;
   dueDate?: Date;
   order: number;
+  tags: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -26,6 +28,7 @@ const TaskSchema = new Schema<ITask>(
       type: String,
       trim: true,
       maxlength: [500, "Description cannot exceed 500 characters"],
+      default: "",
     },
     status: {
       type: String,
@@ -44,6 +47,11 @@ const TaskSchema = new Schema<ITask>(
     },
     project: {
       type: Schema.Types.ObjectId,
+      ref: "Project",
+      required: true,
+    },
+    createdBy: {
+      type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
@@ -53,13 +61,22 @@ const TaskSchema = new Schema<ITask>(
     },
     order: {
       type: Number,
-      default: 0, // used for drag and drop ordering Day 12
+      default: 0,
+    },
+    tags: {
+      type: [String],
+      default: [],
     },
   },
   {
     timestamps: true,
   }
 );
+
+// Indexes for fast queries
+TaskSchema.index({ project: 1, status: 1 });
+TaskSchema.index({ assignee: 1 });
+TaskSchema.index({ project: 1, order: 1 });
 
 export default mongoose.models.Task ||
   mongoose.model<ITask>("Task", TaskSchema);
