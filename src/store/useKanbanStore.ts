@@ -1,5 +1,16 @@
 import { create } from "zustand";
 
+export interface CommentItem {
+  _id: string;
+  user: {
+    _id: string;
+    name: string;
+    email: string;
+  };
+  content: string;
+  createdAt: string;
+}
+
 // Plain interface — avoids Mongoose ObjectId type conflicts
 export interface TaskItem {
   _id: string;
@@ -13,9 +24,12 @@ export interface TaskItem {
   dueDate?: Date;
   order: number;
   tags: string[];
+  comments: CommentItem[];
   createdAt?: Date;
   updatedAt?: Date;
 }
+
+
 
 export type TaskStatus = "todo" | "in-progress" | "done";
 

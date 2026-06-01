@@ -16,6 +16,7 @@ import { useKanbanStore, TaskStatus, TaskItem } from "@/store/useKanbanStore";
 import KanbanColumn from "./kanban-column";
 import TaskCard from "./task-card";
 import CreateTaskModal from "./create-task-modal";
+import TaskDetailModal from "./task-detail-modal";
 
 interface KanbanBoardProps {
   projectId: string;
@@ -36,6 +37,9 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [defaultStatus, setDefaultStatus] = useState<TaskStatus>("todo");
   const [activeTask, setActiveTask] = useState<TaskItem | null>(null);
+
+  // Add state for selected task
+const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
 
   // Pointer sensor — requires 8px movement before drag starts
   // prevents accidental drags on click
@@ -153,8 +157,8 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
   };
 
   const handleTaskClick = (task: TaskItem) => {
-    console.log("Task clicked:", task.title);
-  };
+  setSelectedTask(task);
+};
 
   if (isLoading) {
     return (
@@ -222,6 +226,13 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
           onClose={() => setIsModalOpen(false)}
         />
       )}
+       {selectedTask && (
+  <TaskDetailModal
+    task={selectedTask}
+    onClose={() => setSelectedTask(null)}
+  />
+)}
     </DndContext>
+    
   );
 }

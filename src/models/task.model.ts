@@ -1,5 +1,12 @@
 import mongoose, { Document, Schema } from "mongoose";
 
+export interface IComment {
+  _id: mongoose.Types.ObjectId;
+  user: mongoose.Types.ObjectId;
+  content: string;
+  createdAt: Date;
+}
+
 export interface ITask extends Document {
   title: string;
   description?: string;
@@ -11,9 +18,29 @@ export interface ITask extends Document {
   dueDate?: Date;
   order: number;
   tags: string[];
+  comments: IComment[];
   createdAt: Date;
   updatedAt: Date;
 }
+
+const CommentSchema = new Schema<IComment>(
+  {
+    user: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    content: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: [500, "Comment cannot exceed 500 characters"],
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
 
 const TaskSchema = new Schema<ITask>(
   {
@@ -67,13 +94,16 @@ const TaskSchema = new Schema<ITask>(
       type: [String],
       default: [],
     },
+    comments: {
+      type: [CommentSchema],
+      default: [],
+    },
   },
   {
     timestamps: true,
   }
 );
 
-// Indexes for fast queries
 TaskSchema.index({ project: 1, status: 1 });
 TaskSchema.index({ assignee: 1 });
 TaskSchema.index({ project: 1, order: 1 });
