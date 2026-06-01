@@ -4,8 +4,9 @@ import {
   getAuthenticatedUser,
   unauthorizedResponse,
 } from "@/lib/auth-middleware";
+import Task from "@/models/task.model";
+import { connectDB } from "@/lib/db";
 
-// PATCH /api/tasks/:id/status
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -37,6 +38,17 @@ export async function PATCH(
         { success: false, error: "Task not found or unauthorized" },
         { status: 404 }
       );
+    }
+
+    // Emit real-time event to all project members
+    const io = (global as any).io;
+    if (io) {
+      io.to(`project:${task.project}`).emit("task-moved", {
+        taskId: id,
+        status,
+        order: order ?? 0,
+        movedBy: user.id,
+      });
     }
 
     return NextResponse.json({

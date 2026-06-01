@@ -17,6 +17,7 @@ import KanbanColumn from "./kanban-column";
 import TaskCard from "./task-card";
 import CreateTaskModal from "./create-task-modal";
 import TaskDetailModal from "./task-detail-modal";
+import { useSocket } from "@/components/shared/socket-provider";
 
 interface KanbanBoardProps {
   projectId: string;
@@ -38,6 +39,8 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
   const [defaultStatus, setDefaultStatus] = useState<TaskStatus>("todo");
   const [activeTask, setActiveTask] = useState<TaskItem | null>(null);
 
+  const { socket } = useSocket();
+
   // Add state for selected task
 const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
 
@@ -50,6 +53,28 @@ const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
       },
     })
   );
+
+  useEffect(() => {
+  if (!socket || !projectId) return;
+
+  socket.emit("join-project", projectId);
+
+  // Listen for task moves from other users
+  socket.on("task-moved", (data: {
+    taskId: string;
+    status: TaskStatus;
+    order: number;
+    movedBy: string;
+  }) => {
+    // Update store for other users (not the one who moved it)
+    moveTask(data.taskId, data.status, data.order);
+  });
+
+  return () => {
+    socket.emit("leave-project", projectId);
+    socket.off("task-moved");
+  };
+}, [socket, projectId]);
 
   // Fetch tasks
   useEffect(() => {
